@@ -11,7 +11,7 @@ export default function CharacterMovingLeft(body) {
     if(frame < 3){
       const timer = setInterval(() => {
         setFrame((prevFrame) => (prevFrame % 3) + 1);
-      }, 290 - (body.movespeed * 50));
+      }, 60);
   
       return () => clearInterval(timer);
     }
@@ -33,7 +33,7 @@ export default function CharacterMovingLeft(body) {
 
         <div style={{
           position: 'relative', width: '3px', height: '5px',
-          backgroundColor: 'black', top: '3px', left: '2px'
+          backgroundColor: 'black', top: '3px', left: '3px'
         }}>
 
         </div>

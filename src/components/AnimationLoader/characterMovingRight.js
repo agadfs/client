@@ -11,12 +11,12 @@ export default function CharacterMovingRight(body) {
     if(frame < 3){
       const timer = setInterval(() => {
         setFrame((prevFrame) => (prevFrame % 3) + 1);
-      }, 290 - (body.movespeed * 50));
+      }, 60);
   
       return () => clearInterval(timer);
     }
   }, [frame]);
-  console.log('312312312312')
+ 
  
   
 

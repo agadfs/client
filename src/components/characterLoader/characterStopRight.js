@@ -1,12 +1,12 @@
 
 
 
-export default function CharacterStopDown(head)
+export default function CharacterStopRight(head)
   
   
   
   {
-    console.log('qwdqwd')
+
   return (
     <div>
       {/* cabeça */}
