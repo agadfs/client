@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './App.module.css';
 import io from 'socket.io-client';
 import Character from './components/charLoader';
-import { map, set } from 'lodash';
+
 
 
 const imagesContext = require.context('./components/TILES_WALLS', false, /\.png$/);
-
+const imagesContextFloor = require.context('./components/TILES_FLOORS', false, /\.png$/);
 
 
 const socket = io.connect("http://localhost:3001");
@@ -14,8 +14,12 @@ const socket = io.connect("http://localhost:3001");
 /* http://localhost:3001 */
 
 function App() {
+  const mapBodyRef = useRef(null);
+  const [floorTP, setFloorTP] = useState(false);
+  const [floorTPArray, setFloorTPArray] = useState([]);
   const [floordecal, setFloorDecal] = useState(false);
   const [images, setImages] = useState([]);
+  const [imagesfloor, setImagesfloor] = useState([]);
   const [menuLocation, setMenuLocation] = useState([-10, -10, 'target', 'targettype']);
   const [playing, setPlaying] = useState(true);
   const [direction, setDirection] = useState('top');
@@ -99,6 +103,31 @@ function App() {
   const [showMessage, setShowMessage] = useState(false);
   const [showMessageDmgReceived, setShowMessageDmgReceived] = useState(false);
 
+  useEffect(() => {
+    if (loggedAccount) {
+      const tileId = `tile-${loggedAccount.position[0]}-${loggedAccount.position[1]}`;
+      const tileElement = document.getElementById(tileId);
+      if (tileElement) { // Check if tileElement is not null
+        const playerPositionX = loggedAccount.position[0] * 32;
+        const playerPositionY = loggedAccount.position[1] * 32;
+        const scrollPositionX = mapBodyRef.current.scrollLeft;
+        const scrollPositionY = mapBodyRef.current.scrollTop;
+        const viewportWidth = mapBodyRef.current.offsetWidth;
+        const viewportHeight = mapBodyRef.current.offsetHeight;
+        const borderDistanceY = 6 * 32; 
+        const borderDistanceX = 9 * 32; 
+  
+        if (
+          playerPositionX - scrollPositionX < borderDistanceX || 
+          scrollPositionX + viewportWidth - playerPositionX < borderDistanceX || 
+          playerPositionY - scrollPositionY < borderDistanceY || 
+          scrollPositionY + viewportHeight - playerPositionY < borderDistanceY 
+        ) {
+          tileElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }
+      }
+    }
+  }, [loggedAccount]);
 
   useEffect(() => {
     const loadImages = () => {
@@ -111,6 +140,18 @@ function App() {
     };
 
     loadImages();
+  }, []);
+  useEffect(() => {
+    const loadImagesFloor = () => {
+      const keys = imagesContextFloor.keys();
+      const images = keys.map(key => ({
+        src: imagesContextFloor(key),
+        name: key.substring(key.lastIndexOf('/') + 1, key.lastIndexOf('.'))
+      }));
+      setImagesfloor(images);
+    };
+
+    loadImagesFloor();
   }, []);
 
   const checkPlayerMovement = useCallback(() => {
@@ -986,18 +1027,10 @@ function App() {
           <div style={{ marginTop: '20px', color: 'black' }} >
 
             <div>
-              <input value={newWallName}
+              <input readOnly value={newWallName}
 
                 type="text" placeholder="Enter the wall name" />
-              <select value={wallrotate}
-                onChange={(e) => {
-                  setWallRotate(e.target.value)
-                }}>
-                <option value="0">0</option>
-                <option value="90">90</option>
-                <option value="180">180</option>
-                <option value="270">270</option>
-              </select>
+              
             </div>
             <button onClick={() => {
               setPlaceFloor(false)
@@ -1080,8 +1113,8 @@ function App() {
           <div style={{ position: 'absolute', top: '-30px', left: '300px', color: 'black' }} >
 
             <div>
-              <input value={newFloorName}
-                onChange={(e) => { setNewFloorName(e.target.value) }}
+              <input readOnly value={newFloorName}
+
                 type="text" placeholder="Enter the floor name" />
             </div>
             <button onClick={() => {
@@ -1093,17 +1126,40 @@ function App() {
             </button>
             <button onClick={() => {
               setFloorDecal(!floordecal)
-              
+
             }} >
               {floordecal ? 'Click to make normal floor' : 'Click to make a decal floor'}
             </button>
 
             <div style={{ display: 'flex' }}>
+              {
+
+                newFloorName ?
+                  <img
+
+                    src={require(`./components/TILES_FLOORS/${newFloorName}.png`)}
+                    width={32} height={32}
+                    alt='npc'
+                  /> : null
+
+              }
               Floors :
+              {
+                imagesfloor.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image.src}
+                    width={32} height={32}
+                    alt='npc'
+                    onClick={() => setNewFloorName(image.name)}
+                  />
+                ))
+              }
             </div>
 
           </div> : null}
-        <div className={styles.mapBody} >
+        <div ref={mapBodyRef} className={styles.mapBody} >
+
           <div onMouseDown={(event) => {
             if (event.shiftKey && event.button === 0) { // Check if shift key is held and left button was clicked
               const rect = mapFullRef.current.getBoundingClientRect();
@@ -1146,9 +1202,9 @@ function App() {
                 const rect = mapFullRef.current.getBoundingClientRect();
                 const x = Math.floor((event.clientX - rect.left) / 32);
                 const y = Math.floor((event.clientY - rect.top) / 32);
-                if(floordecal){
+                if (floordecal) {
                   setMapFloorDecals(prev => prev.filter(floor => floor.X !== x || floor.Y !== y));
-                }else{
+                } else {
 
                   setMapFloors(prev => prev.filter(floor => floor.X !== x || floor.Y !== y));
                 }
@@ -1173,11 +1229,11 @@ function App() {
                 const y = Math.floor((event.clientY - rect.top) / 32);
 
                 if (placeFloor) {
-                  if(floordecal){
+                  if (floordecal) {
 
                     setMapFloorDecals(prev => [...prev, { Name: newFloorName, X: x, Y: y }])
-                      console.log(mapFloorDecals)
-                  }else{
+                    console.log(mapFloorDecals)
+                  } else {
 
                     setMapFloors(prev => [...prev, { Name: newFloorName, X: x, Y: y }])
                   }
@@ -1305,6 +1361,7 @@ function App() {
             <div >
               {mapFloors.map((floors, index) => (
                 <div
+                  id={`tile-${floors?.X}-${floors?.Y}`}
                   onClick={() => {
                     setMenuLocation([-30, -30]);
                   }}
@@ -1659,7 +1716,7 @@ function App() {
               }} >
                 {loggedAccount?.username}
               </div>
-              
+
               <div style={{
                 position: 'relative', top: '-75px', left: '-35px', minHeight: '135px',
                 width: '0px'
@@ -1673,7 +1730,7 @@ function App() {
                 bottom: '210px',
                 justifyContent: 'center',
                 display: 'flex',
-                zIndex: `${(loggedAccount?.position[1]+1) + (loggedAccount?.position[0]+1)}`,
+                zIndex: `${(loggedAccount?.position[1] + 1) + (loggedAccount?.position[0] + 1)}`,
 
               }} >
                 <div style={{
